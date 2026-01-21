@@ -11,6 +11,11 @@
 </head>
 
 <body>
+    <div class="bg-fixed">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
     <div class="app-container">
         <!-- Header -->
         <header>
@@ -33,15 +38,15 @@
         <!-- Main Content -->
         <main>
             <!-- File Selection Card -->
-            <div class="card file-drop-zone" id="dropZone">
+            <div class="card file-drop-zone" id="dropZone" onclick="selectFile()">
                 <div class="icon-large">📂</div>
                 <h3>Select Excel File</h3>
                 <p>Drag and drop your .xlsx file here or click to browse</p>
                 <div class="file-info" id="fileInfo" style="display: none;">
                     <span class="file-name" id="fileName">contract.xlsx</span>
-                    <button class="remove-btn" onclick="clearFile()">✕</button>
+                    <button class="remove-btn" onclick="clearFile(event)">✕</button>
                 </div>
-                <button class="btn btn-primary" onclick="selectFile()">Browse File</button>
+                <!-- <button class="btn btn-primary">Browse File</button> -->
             </div>
 
             <!-- Configuration Card -->

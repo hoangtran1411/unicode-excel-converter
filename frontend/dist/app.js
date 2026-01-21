@@ -87,7 +87,10 @@ window.selectFile = async () => {
     }
 };
 
-window.clearFile = () => {
+window.clearFile = (event) => {
+    if (event) {
+        event.stopPropagation();
+    }
     updateUIFileSelected("");
 };
 
