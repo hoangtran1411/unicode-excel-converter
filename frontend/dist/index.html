@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>VNI to Unicode Converter</title>
+    <link href="style.css" rel="stylesheet">
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header>
+            <div class="logo">
+                <div class="logo-icon">V</div>
+                <h1>VNI Converter</h1>
+            </div>
+            <div class="window-controls">
+                <!-- Mac-style-ish traffic lights or ignored if frame is native -->
+            </div>
+        </header>
+
+        <!-- Update Notification Bar -->
+        <div id="update-bar" class="update-bar" style="display: none;">
+            <span>✨ New version available: <strong id="new-version">v1.2.0</strong></span>
+            <button class="btn-update" onclick="performUpdate()">Update Now</button>
+            <button class="btn-close-update" onclick="hideUpdate()">✕</button>
+        </div>
+
+        <!-- Main Content -->
+        <main>
+            <!-- File Selection Card -->
+            <div class="card file-drop-zone" id="dropZone">
+                <div class="icon-large">📂</div>
+                <h3>Select Excel File</h3>
+                <p>Drag and drop your .xlsx file here or click to browse</p>
+                <div class="file-info" id="fileInfo" style="display: none;">
+                    <span class="file-name" id="fileName">contract.xlsx</span>
+                    <button class="remove-btn" onclick="clearFile()">✕</button>
+                </div>
+                <button class="btn btn-primary" onclick="selectFile()">Browse File</button>
+            </div>
+
+            <!-- Configuration Card -->
+            <div class="card config-card">
+                <h3>Configuration</h3>
+                <div class="form-group">
+                    <label>Sheet Name (Optional)</label>
+                    <input type="text" id="sheetName" placeholder="Leave empty to convert all sheets">
+                </div>
+                <!-- Encoding Option -->
+                <div class="form-group">
+                    <label>Source Encoding</label>
+                    <select id="encoding">
+                        <option value="AUTO">Auto Detect (Recommended)</option>
+                        <option value="VNI">VNI-Windows</option>
+                        <option value="TCVN3">TCVN3 (ABC)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Action Card -->
+            <div class="card action-card">
+                <button class="btn btn-convert" id="convertBtn" onclick="startConversion()" disabled>
+                    START CONVERSION
+                </button>
+
+                <!-- Progress Bar -->
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <span class="progress-text" id="progressText">Processing...</span>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer>
+            <p>VNI to Unicode Converter v1.0.0</p>
+        </footer>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
