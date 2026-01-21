@@ -1,113 +1,352 @@
 package converter
 
-import "strings"
+import (
+	"strings"
+	"unicode"
+)
 
 // VNIConverter handles conversion from VNI-Windows encoding to Unicode.
-// Why: Encapsulates the specific mapping logic for VNI legacy font.
+// This converter handles VNI text that has been converted to Unicode by Excel.
+// VNI uses "combining marks" where tone markers follow the vowel they modify.
 type VNIConverter struct {
-	replacer *strings.Replacer
+	legacyReplacer *strings.Replacer
 }
 
 // NewVNIConverter creates a new instance of VNIConverter.
-// Why: Initializes the reusable replacer for efficient string transformation.
 func NewVNIConverter() *VNIConverter {
-	// Standard VNI-Windows mapping based on mapping VNI-specific byte values to Unicode.
-	// When Excel reads VNI text, it typically sees the ANSI characters corresponding to the raw bytes.
-	// E.g., 'á' in VNI is 0xE1. In Unicode/ANSI, 0xE1 is also 'á'.
-	// But 'ả' in VNI is 0x1E. In Unicode, 0x1E is a Control Character.
-	// We map these specific "garbage" characters to the correct Vietnamese Unicode.
 	return &VNIConverter{
-		replacer: strings.NewReplacer(
-			// Lowercase
-			"\u00E1", "á", // a1
-			"\u00E0", "à", // a2
-			"\u1E03", "ả", // a3 - Note: 1E03 is Unicode 'ả'. Wait. VNI byte is 0x1E.
-			"\u001E", "ả", // Correct mapping for byte 0x1E
-			"\u00E3", "ã", // a4
-			"\u00B5", "ạ", // a5 - 0xB5 is µ
-
-			"\u00E2", "â", // a6
-			"\u00CA", "ấ", // a61
-			"\u00C7", "ầ", // a62
-			"\u00C8", "ẩ", // a63
-			"\u00C9", "ẫ", // a64
-			"\u00CB", "ậ", // a65
-
-			"\u00E5", "ă", // a8
-			"\u00D0", "ắ", // a81 - 0xD0 is Đ (Eth)
-			"\u00CC", "ằ", // a82
-			"\u00CE", "ẳ", // a83
-			"\u00CF", "ẵ", // a84
-			"\u00D1", "ặ", // a85 - 0xD1 is Ñ
-
-			"\u00E9", "é", // e1
-			"\u00E8", "è", // e2
-			"\u001F", "ẻ", // e3 - 0x1F (Unit Separator)
-			"\u00E4", "ẽ", // e4
-			"\u00B9", "ẹ", // e5 - 0xB9 is ¹
-
-			"\u00EA", "ê", // e6
-			"\u00D5", "ế", // e61 - 0xD5 is Õ
-			"\u00D2", "ề", // e62
-			"\u00D3", "ể", // e63
-			"\u00D4", "ễ", // e64
-			"\u00D6", "ệ", // e65
-
-			"\u00ED", "í", // i1
-			"\u00EC", "ì", // i2
-			"\u0021", "ỉ", // i3 - !
-			"\u00EF", "ĩ", // i4
-			"\u00F7", "ị", // i5 - Division sign
-
-			"\u00F3", "ó", // o1
-			"\u00F2", "ò", // o2
-			"\u0023", "ỏ", // o3 - #
-			"\u00F5", "õ", // o4
-			"\u00F4", "ọ", // o5
-
-			"\u00F6", "ô", // o6
-			"\u0092", "ố", // o61 - CP1252 0x92 is ’ (Right single quote)
-			"\u0093", "ồ", // o62 - “
-			"\u0094", "ổ", // o63 - ”
-			"\u0095", "ỗ", // o64 - •
-			"\u0096", "ộ", // o65 - –
-
-			"\u00F8", "ơ", // o7
-			"\u00B6", "ớ", // o71 - ¶
-			"\u00B7", "ờ", // o72 - ·
-			"\u0080", "ở", // o73 - €
-			"\u0081", "ỡ", // o74 - (Unused in 1252? mapped to specific control)
-			"\u0082", "ợ", // o75 - ‚ (Single low-9 quote)
-
-			"\u00FA", "ú", // u1
-			"\u00F9", "ù", // u2
-			"\u001A", "ủ", // u3 - SUB
-			"\u0169", "ũ", // u4 - Wait, VNI u4 is 0xFB? 0xFB is û.
-			// Correction needed for 'ũ'.
-			// Standard VNI: u4 (ũ) -> 0xFB (û)
-			"\u00FB", "ũ",
-
-			"\u00D7", "ụ", // u5 - 0xD7 is ×
-
-			"\u00FC", "ư", // u7
-			"\u00BE", "ứ", // u71 - copy from previous
-			"\u00BB", "ừ", // u72
-			"\u00BC", "ử", // u73
-			"\u00BD", "ữ", // u74
-			"\u00AC", "ự", // u75
-
-			"\u00FD", "ý", // y1
-			"\u00D8", "ỳ", // y2 - Ø
-			"\u002A", "ỷ", // y3 - *
-			"\u00D9", "ỹ", // y4 - Ù
-			"\u00DA", "ỵ", // y5 - Ú
-
-			"\u00F1", "đ", // d9 - ñ
-			"\u00AE", "Đ", // D9 - ®
+		// Legacy byte mapping for đ/Đ
+		legacyReplacer: strings.NewReplacer(
+			"\u00F1", "đ", // ñ -> đ
+			"\u00AE", "Đ", // ® -> Đ
+			"Ñ", "Đ", // Ñ -> Đ
 		),
 	}
 }
 
+// VNI Tone Markers - these follow the vowel they modify
+// Each map: marker rune -> tone type
+var vniToneMarkers = map[rune]string{
+	// Circumflex markers (^) - dấu mũ
+	'Â': "circumflex",
+	'â': "circumflex",
+	'Ê': "circumflex",
+	'ê': "circumflex",
+	'Ô': "circumflex",
+	'ô': "circumflex",
+
+	// Grave markers (`) - dấu huyền
+	'Ø': "grave",
+	'ø': "grave",
+
+	// Acute markers (´) - dấu sắc
+	'Ù': "acute",
+	'ù': "acute",
+
+	// Hook markers (?) - dấu hỏi
+	'Û': "hook",
+	'û': "hook",
+
+	// Tilde markers (~) - dấu ngã
+	'Ü': "tilde",
+	'ü': "tilde",
+
+	// Dot markers (.) - dấu nặng
+	'Ï': "dot",
+	'ï': "dot",
+}
+
+// Vowel combinations: base vowel -> tone type -> combined vowel
+var vowelCombinations = map[rune]map[string]rune{
+	// Lowercase A
+	'a': {
+		"circumflex": 'â',
+		"grave":      'à',
+		"acute":      'á',
+		"hook":       'ả',
+		"tilde":      'ã',
+		"dot":        'ạ',
+	},
+	// Uppercase A
+	'A': {
+		"circumflex": 'Â',
+		"grave":      'À',
+		"acute":      'Á',
+		"hook":       'Ả',
+		"tilde":      'Ã',
+		"dot":        'Ạ',
+	},
+	// Lowercase E
+	'e': {
+		"circumflex": 'ê',
+		"grave":      'è',
+		"acute":      'é',
+		"hook":       'ẻ',
+		"tilde":      'ẽ',
+		"dot":        'ẹ',
+	},
+	// Uppercase E
+	'E': {
+		"circumflex": 'Ê',
+		"grave":      'È',
+		"acute":      'É',
+		"hook":       'Ẻ',
+		"tilde":      'Ẽ',
+		"dot":        'Ẹ',
+	},
+	// Lowercase I
+	'i': {
+		"grave": 'ì',
+		"acute": 'í',
+		"hook":  'ỉ',
+		"tilde": 'ĩ',
+		"dot":   'ị',
+	},
+	// Uppercase I
+	'I': {
+		"grave": 'Ì',
+		"acute": 'Í',
+		"hook":  'Ỉ',
+		"tilde": 'Ĩ',
+		"dot":   'Ị',
+	},
+	// Lowercase O
+	'o': {
+		"circumflex": 'ô',
+		"grave":      'ò',
+		"acute":      'ó',
+		"hook":       'ỏ',
+		"tilde":      'õ',
+		"dot":        'ọ',
+	},
+	// Uppercase O
+	'O': {
+		"circumflex": 'Ô',
+		"grave":      'Ò',
+		"acute":      'Ó',
+		"hook":       'Ỏ',
+		"tilde":      'Õ',
+		"dot":        'Ọ',
+	},
+	// Lowercase U
+	'u': {
+		"grave": 'ù',
+		"acute": 'ú',
+		"hook":  'ủ',
+		"tilde": 'ũ',
+		"dot":   'ụ',
+	},
+	// Uppercase U
+	'U': {
+		"grave": 'Ù',
+		"acute": 'Ú',
+		"hook":  'Ủ',
+		"tilde": 'Ũ',
+		"dot":   'Ụ',
+	},
+	// Lowercase Y
+	'y': {
+		"grave": 'ỳ',
+		"acute": 'ý',
+		"hook":  'ỷ',
+		"tilde": 'ỹ',
+		"dot":   'ỵ',
+	},
+	// Uppercase Y
+	'Y': {
+		"grave": 'Ỳ',
+		"acute": 'Ý',
+		"hook":  'Ỷ',
+		"tilde": 'Ỹ',
+		"dot":   'Ỵ',
+	},
+}
+
+// Combined vowels that can receive additional tones
+// e.g., Ô + dấu nặng = Ộ
+var combinedVowelTones = map[rune]map[string]rune{
+	// Â group (a circumflex)
+	'Â': {"grave": 'Ầ', "acute": 'Ấ', "hook": 'Ẩ', "tilde": 'Ẫ', "dot": 'Ậ'},
+	'â': {"grave": 'ầ', "acute": 'ấ', "hook": 'ẩ', "tilde": 'ẫ', "dot": 'ậ'},
+	// Ê group (e circumflex)
+	'Ê': {"grave": 'Ề', "acute": 'Ế', "hook": 'Ể', "tilde": 'Ễ', "dot": 'Ệ'},
+	'ê': {"grave": 'ề', "acute": 'ế', "hook": 'ể', "tilde": 'ễ', "dot": 'ệ'},
+	// Ô group (o circumflex)
+	'Ô': {"grave": 'Ồ', "acute": 'Ố', "hook": 'Ổ', "tilde": 'Ỗ', "dot": 'Ộ'},
+	'ô': {"grave": 'ồ', "acute": 'ố', "hook": 'ổ', "tilde": 'ỗ', "dot": 'ộ'},
+	// Ă group (a breve)
+	'Ă': {"grave": 'Ằ', "acute": 'Ắ', "hook": 'Ẳ', "tilde": 'Ẵ', "dot": 'Ặ'},
+	'ă': {"grave": 'ằ', "acute": 'ắ', "hook": 'ẳ', "tilde": 'ẵ', "dot": 'ặ'},
+	// Ơ group (o horn)
+	'Ơ': {"grave": 'Ờ', "acute": 'Ớ', "hook": 'Ở', "tilde": 'Ỡ', "dot": 'Ợ'},
+	'ơ': {"grave": 'ờ', "acute": 'ớ', "hook": 'ở', "tilde": 'ỡ', "dot": 'ợ'},
+	// Ư group (u horn)
+	'Ư': {"grave": 'Ừ', "acute": 'Ứ', "hook": 'Ử', "tilde": 'Ữ', "dot": 'Ự'},
+	'ư': {"grave": 'ừ', "acute": 'ứ', "hook": 'ử', "tilde": 'ữ', "dot": 'ự'},
+}
+
+// ToUnicode converts VNI text to proper Unicode Vietnamese
 func (c *VNIConverter) ToUnicode(text string) string {
-	return c.replacer.Replace(text)
+	// First, apply combining conversion
+	result := convertVNICombining(text)
+
+	// Then apply legacy replacements for đ/Đ
+	result = c.legacyReplacer.Replace(result)
+
+	return result
+}
+
+// convertVNICombining handles VNI "combining marks" style encoding
+func convertVNICombining(text string) string {
+	runes := []rune(text)
+	var result []rune
+
+	i := 0
+	for i < len(runes) {
+		r := runes[i]
+
+		// Check if this rune is a VNI tone marker
+		if toneType, isTone := vniToneMarkers[r]; isTone {
+			// Try to combine with previous character
+			if len(result) > 0 {
+				lastIdx := len(result) - 1
+				lastChar := result[lastIdx]
+
+				// Case 1: Previous is a combined vowel (Ô, Ê, Â, etc.) - add tone to it
+				if tones, ok := combinedVowelTones[lastChar]; ok {
+					if combined, ok := tones[toneType]; ok {
+						result[lastIdx] = combined
+						i++
+						continue
+					}
+				}
+
+				// Case 2: Previous is a base vowel - combine with tone
+				if combos, ok := vowelCombinations[lastChar]; ok {
+					if combined, ok := combos[toneType]; ok {
+						result[lastIdx] = combined
+						i++
+						continue
+					}
+				}
+			}
+
+			// Special handling for standalone circumflex markers that should combine
+			// with the vowel BEFORE them (VNI style: O + Â = Ô)
+			if r == 'Â' || r == 'â' {
+				if len(result) > 0 {
+					lastIdx := len(result) - 1
+					lastChar := result[lastIdx]
+					if combos, ok := vowelCombinations[lastChar]; ok {
+						if combined, ok := combos["circumflex"]; ok {
+							result[lastIdx] = combined
+							i++
+							continue
+						}
+					}
+				}
+			}
+
+			if r == 'Ø' || r == 'ø' {
+				if len(result) > 0 {
+					lastIdx := len(result) - 1
+					lastChar := result[lastIdx]
+					// Try adding grave to base vowel
+					if combos, ok := vowelCombinations[lastChar]; ok {
+						if combined, ok := combos["grave"]; ok {
+							result[lastIdx] = combined
+							i++
+							continue
+						}
+					}
+					// Try adding grave to combined vowel (Ô + Ø = Ồ)
+					if tones, ok := combinedVowelTones[lastChar]; ok {
+						if combined, ok := tones["grave"]; ok {
+							result[lastIdx] = combined
+							i++
+							continue
+						}
+					}
+				}
+			}
+
+			if r == 'Ï' || r == 'ï' {
+				if len(result) > 0 {
+					lastIdx := len(result) - 1
+					lastChar := result[lastIdx]
+					// Try adding dot to base vowel
+					if combos, ok := vowelCombinations[lastChar]; ok {
+						if combined, ok := combos["dot"]; ok {
+							result[lastIdx] = combined
+							i++
+							continue
+						}
+					}
+					// Try adding dot to combined vowel (Ô + Ï = Ộ)
+					if tones, ok := combinedVowelTones[lastChar]; ok {
+						if combined, ok := tones["dot"]; ok {
+							result[lastIdx] = combined
+							i++
+							continue
+						}
+					}
+				}
+			}
+		}
+
+		// Handle Đ/đ (ñ/Ñ in VNI)
+		if r == 'Ñ' {
+			result = append(result, 'Đ')
+			i++
+			continue
+		}
+		if r == 'ñ' {
+			result = append(result, 'đ')
+			i++
+			continue
+		}
+
+		// Check for breve marker (ă/Ă)
+		// In VNI, Å = breve marker
+		if r == 'Å' || r == 'å' {
+			if len(result) > 0 {
+				lastIdx := len(result) - 1
+				lastChar := result[lastIdx]
+				if lastChar == 'A' || lastChar == 'a' {
+					if unicode.IsUpper(lastChar) {
+						result[lastIdx] = 'Ă'
+					} else {
+						result[lastIdx] = 'ă'
+					}
+					i++
+					continue
+				}
+			}
+		}
+
+		// Check for horn marker (ơ/Ơ, ư/Ư)
+		// In VNI, Ö = horn for o, Ü might be for u
+		if r == 'Ö' || r == 'ö' {
+			if len(result) > 0 {
+				lastIdx := len(result) - 1
+				lastChar := result[lastIdx]
+				if lastChar == 'O' {
+					result[lastIdx] = 'Ơ'
+					i++
+					continue
+				}
+				if lastChar == 'o' {
+					result[lastIdx] = 'ơ'
+					i++
+					continue
+				}
+			}
+		}
+
+		// Default: keep the character
+		result = append(result, r)
+		i++
+	}
+
+	return string(result)
 }

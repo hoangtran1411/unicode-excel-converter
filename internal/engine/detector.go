@@ -17,8 +17,10 @@ func DetectEncoding(fontName string, text string) converter.EncodingType {
 	}
 
 	// 2. Check content (Heuristic)
-	// VNI uses unique chars like \u00D6 (Ö), \u00DB (Û), etc. found in vni.go
-	if strings.ContainsAny(text, "\u00D6\u00DB\u00DC\u00DD\u00DE\u00DF\u00E6\u00E7\u00E8\u00E9") {
+	// VNI uses combining marks. Check for common VNI-specific markers:
+	// Â/Ê/Ô = circumflex, Ø = grave, Ù = acute, Û = hook, Ü = tilde, Ï = dot
+	// Å = breve, Ö = horn, ñ/Ñ = đ/Đ
+	if strings.ContainsAny(text, "\u00C2\u00CA\u00D4\u00D8\u00D9\u00DB\u00DC\u00CF\u00C5\u00D6\u00F1\u00D1\u00E2\u00EA\u00F4\u00F8\u00F9\u00FB\u00FC\u00EF\u00E5\u00F6") {
 		return converter.EncodingVNI
 	}
 
