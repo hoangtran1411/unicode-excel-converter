@@ -23,11 +23,15 @@ func TestProcessor_Run(t *testing.T) {
 
 	// A1: Plain VNI Text (Font: VNI-Times)
 	// "Việt Nam" in VNI: "Vi\u00D6t Nam"
-	f.SetCellValue(sheet, "A1", "Vi\u00D6t Nam")
+	if err := f.SetCellValue(sheet, "A1", "Vi\u00D6t Nam"); err != nil {
+		t.Fatalf("failed to set cell value A1: %v", err)
+	}
 	styleID, _ := f.NewStyle(&excelize.Style{
 		Font: &excelize.Font{Family: "VNI-Times", Size: 12},
 	})
-	f.SetCellStyle(sheet, "A1", "A1", styleID)
+	if err := f.SetCellStyle(sheet, "A1", "A1", styleID); err != nil {
+		t.Fatalf("failed to set cell style A1: %v", err)
+	}
 
 	// A2: Rich Text Mixed (VNI + English)
 	// Run 1: "Hello " (Arial)
@@ -36,15 +40,21 @@ func TestProcessor_Run(t *testing.T) {
 		{Text: "Hello ", Font: &excelize.Font{Family: "Arial"}},
 		{Text: "Vi\u00D6t", Font: &excelize.Font{Family: "VNI-Times", Bold: true}},
 	}
-	f.SetCellRichText(sheet, "A2", textRuns)
+	if err := f.SetCellRichText(sheet, "A2", textRuns); err != nil {
+		t.Fatalf("failed to set rich text A2: %v", err)
+	}
 
 	// A3: TCVN3 Text (.VnTime)
 	// "Công ty" in TCVN3: "C\u00F6ng ty"
-	f.SetCellValue(sheet, "A3", "C\u00F6ng ty")
+	if err := f.SetCellValue(sheet, "A3", "C\u00F6ng ty"); err != nil {
+		t.Fatalf("failed to set cell value A3: %v", err)
+	}
 	styleID3, _ := f.NewStyle(&excelize.Style{
 		Font: &excelize.Font{Family: ".VnTime", Size: 12},
 	})
-	f.SetCellStyle(sheet, "A3", "A3", styleID3)
+	if err := f.SetCellStyle(sheet, "A3", "A3", styleID3); err != nil {
+		t.Fatalf("failed to set cell style A3: %v", err)
+	}
 
 	if err := f.SaveAs(inputFile); err != nil {
 		t.Fatalf("failed to create input file: %v", err)
@@ -99,8 +109,9 @@ func TestProcessor_Run(t *testing.T) {
 		// Fallback check style
 		styleID, _ := fOut.GetCellStyle(sheet, "A1")
 		style, _ := fOut.GetStyle(styleID)
+		// Log style font if available for debugging
 		if style != nil && style.Font != nil {
-			// t.Logf("A1 Style Font: %s", style.Font.Family)
+			t.Logf("A1 Style Font: %s", style.Font.Family)
 		}
 	}
 

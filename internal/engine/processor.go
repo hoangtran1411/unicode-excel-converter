@@ -40,7 +40,6 @@ type Processor struct {
 	jobs         chan Job
 	results      chan Result
 	progressChan chan float64
-	totalCells   int
 	processed    int
 
 	// Format Preservers for different encodings
@@ -122,10 +121,18 @@ func (p *Processor) Run(ctx context.Context) (string, error) {
 			rowIdx := 0
 			for rows.Next() {
 				rowIdx++
-				cols, _ := rows.Columns()
+				cols, err := rows.Columns()
+				if err != nil {
+					fmt.Printf("Error getting columns for row %d: %v\n", rowIdx, err)
+					continue
+				}
 				for colIdx, text := range cols {
 					// 0-indexed colIdx -> "A", "B"
-					axis, _ := excelize.CoordinatesToCellName(colIdx+1, rowIdx)
+					axis, err := excelize.CoordinatesToCellName(colIdx+1, rowIdx)
+					if err != nil {
+						fmt.Printf("Error converting coordinates for row %d col %d: %v\n", rowIdx, colIdx+1, err)
+						continue
+					}
 
 					if strings.TrimSpace(text) == "" {
 						continue
@@ -193,7 +200,7 @@ func (p *Processor) Run(ctx context.Context) (string, error) {
 
 		// Always write Rich Text to enforce font/format
 		if err := p.f.SetCellRichText(res.Job.SheetName, res.Job.Axis, res.NewRuns); err != nil {
-			// Log error?
+			fmt.Printf("Error writing rich text to %s: %v\n", res.Job.Axis, err)
 		}
 
 		p.processed++

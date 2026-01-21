@@ -114,7 +114,7 @@ func parseVersion(v string) [3]int {
 	var result [3]int
 	parts := strings.Split(v, ".")
 	for i := 0; i < len(parts) && i < 3; i++ {
-		fmt.Sscanf(parts[i], "%d", &result[i])
+		_, _ = fmt.Sscanf(parts[i], "%d", &result[i])
 	}
 	return result
 }
@@ -149,7 +149,9 @@ func (a *App) PerformUpdate(downloadURL string) (bool, error) {
 	}
 
 	_, err = io.Copy(out, resp.Body)
-	out.Close()
+	if closeErr := out.Close(); closeErr != nil && err == nil {
+		err = closeErr
+	}
 	if err != nil {
 		return false, fmt.Errorf("failed to save update: %w", err)
 	}
