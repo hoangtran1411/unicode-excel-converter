@@ -62,6 +62,10 @@ var vniToneMarkers = map[rune]string{
 	// Dot markers (.) - dấu nặng
 	'Ï': "dot",
 	'ï': "dot",
+
+	// Horn markers
+	'Ö': "horn",
+	'ö': "horn",
 }
 
 // Vowel combinations: base vowel -> tone type -> combined vowel
