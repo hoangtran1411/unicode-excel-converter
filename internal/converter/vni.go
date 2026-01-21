@@ -198,6 +198,12 @@ func (c *VNIConverter) ToUnicode(text string) string {
 
 // convertVNICombining handles VNI "combining marks" style encoding
 func convertVNICombining(text string) string {
+	// Pre-processing: Fix special VNI sequences
+	// ÖÔ -> ƯƠ (Fix for PHƯỜNG pattern)
+	text = strings.ReplaceAll(text, "ÖÔ", "ƯƠ")
+	text = strings.ReplaceAll(text, "ÖO", "ƯƠ")
+	text = strings.ReplaceAll(text, "Öø", "Ừ") // Ö + grave -> Ừ (sometimes)
+
 	runes := []rune(text)
 	var result []rune
 
@@ -228,6 +234,18 @@ func convertVNICombining(text string) string {
 						i++
 						continue
 					}
+				}
+
+				// Case 3: Special handling for Horn (Ö/ö) - if not combined, treat as Ư/ư
+				if r == 'Ö' && toneType == "horn" {
+					result = append(result, 'Ư')
+					i++
+					continue
+				}
+				if r == 'ö' && toneType == "horn" {
+					result = append(result, 'ư')
+					i++
+					continue
 				}
 			}
 
@@ -341,6 +359,15 @@ func convertVNICombining(text string) string {
 					continue
 				}
 			}
+
+			// If not combined with O/o, treat as Ư/ư (common pattern)
+			if r == 'Ö' {
+				result = append(result, 'Ư')
+			} else {
+				result = append(result, 'ư')
+			}
+			i++
+			continue
 		}
 
 		// Default: keep the character
