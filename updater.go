@@ -13,8 +13,9 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// Current version - update this when releasing new versions
-var CurrentVersion = "v1.0.0"
+// CurrentVersion is injected at build time via -ldflags.
+// Default is "0.0.0" for local development.
+var CurrentVersion = "0.0.0"
 
 // GitHub repository info
 // TODO: User must update this to their actual repo
