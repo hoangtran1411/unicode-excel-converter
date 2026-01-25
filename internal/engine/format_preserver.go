@@ -11,13 +11,13 @@ import (
 var FontMap = map[string]string{
 	// VNI Fonts
 	"VNI-Times": "Times New Roman",
-	"VNI-Arial": "Arial",
+	"VNI-Arial": DefaultFont,
 	"VNI-Helve": "Helvetica",
 	"VNI-Hobo":  "Hobo Std", // Example
 	// TCVN3 Fonts
 	".VnTime":  "Times New Roman",
 	".VnTimeH": "Times New Roman",
-	".VnArial": "Arial",
+	".VnArial": DefaultFont,
 	".VnHelve": "Helvetica",
 }
 

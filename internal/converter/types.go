@@ -1,3 +1,4 @@
+// Package converter provides functions to convert legacy Vietnamese encodings to Unicode.
 package converter
 
 // EncodingType represents the source font encoding.
@@ -5,9 +6,13 @@ package converter
 type EncodingType string
 
 const (
-	EncodingVNI    EncodingType = "VNI"
-	EncodingTCVN3  EncodingType = "TCVN3"
-	EncodingAuto   EncodingType = "AUTO"
+	// EncodingVNI represents VNI-Windows encoding
+	EncodingVNI EncodingType = "VNI"
+	// EncodingTCVN3 represents TCVN3 (ABC) encoding
+	EncodingTCVN3 EncodingType = "TCVN3"
+	// EncodingAuto represents automatic encoding detection
+	EncodingAuto EncodingType = "AUTO"
+	// EncodingUnknown represents an unknown encoding
 	EncodingUnknown EncodingType = "UNKNOWN"
 )
 

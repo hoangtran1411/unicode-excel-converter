@@ -15,7 +15,8 @@ import (
 var assets embed.FS
 
 // main is the entry point of the application.
-// Why: It initializes the Wails application, configures the window properties, and binds the backend logic (App) to the frontend.
+// Why: It initializes the Wails application, configures the window properties,
+// and binds the backend logic (App) to the frontend.
 func main() {
 	// Create an instance of the app structure
 	app := NewApp()

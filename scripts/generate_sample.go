@@ -1,3 +1,4 @@
+// Package main generates sample Excel files for testing.
 package main
 
 import (
@@ -80,7 +81,7 @@ func main() {
 	}
 
 	// Save
-	if err := os.MkdirAll("samples", 0755); err != nil {
+	if err := os.MkdirAll("samples", 0750); err != nil {
 		log.Fatal(err)
 	}
 	output := "samples/sample_data.xlsx"

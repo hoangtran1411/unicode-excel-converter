@@ -1,3 +1,4 @@
+// Package engine handles the Excel processing logic.
 package engine
 
 import (
@@ -133,6 +134,13 @@ func (p *Processor) Run(ctx context.Context) (string, error) {
 					continue
 				}
 				for colIdx, text := range cols {
+					// Check for cancellation
+					select {
+					case <-ctx.Done():
+						return
+					default:
+					}
+
 					axis, err := excelize.CoordinatesToCellName(colIdx+1, rowIdx)
 					if err != nil {
 						slog.Error("failed to convert coordinates", "row", rowIdx, "col", colIdx+1, "error", err)

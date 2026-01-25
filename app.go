@@ -1,3 +1,4 @@
+// Package main handles Wails runtime binding and application logic.
 package main
 
 import (
@@ -90,6 +91,8 @@ func (a *App) ShowInFolder(path string) {
 		return
 	}
 	// Use Windows-native "explorer /select" to open folder and highlight file
-	cmd := exec.Command("explorer", "/select,", path)
+	// Using CommandContext to suppress noctx linter, though context cancellation isn't strictly needed
+	// for fire-and-forget.
+	cmd := exec.CommandContext(a.ctx, "explorer", "/select,", path)
 	_ = cmd.Start() // Fire and forget, error is non-critical
 }

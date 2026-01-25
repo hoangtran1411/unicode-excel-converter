@@ -6,7 +6,7 @@ trigger: always_on
 
 > **Core Rules** - For full idioms reference, see `go-idioms-reference.md`
 
-This project is a **Desktop application to convert VNI font encodings to Unicode in Excel files** built with:
+This project is a **Desktop application to convert VNI/TCVN3 font encodings to Unicode in Excel files** built with:
 - **Wails v2** for the Desktop GUI (Windows)
 - **Internal packages** for modular business logic
 
@@ -14,7 +14,11 @@ This project is a **Desktop application to convert VNI font encodings to Unicode
 
 ## Code Style
 
-- Format with `gofmt`/`goimports`. Run `golangci-lint run ./...` before commit.
+- Format with `gofmt`/`goimports`. Run `golangci-lint` (v2.8.0+) `run ./...` before commit.
+- **Linting Configuration**: MUST use `golangci-lint` v2 configuration schema (v2.8.x+). 
+  - Top-level `version: "2"` is mandatory.
+  - Use kebab-case for all linter settings.
+  - Exclusions move to `linters: exclusions: rules`.
 - Adhere to [Effective Go](https://go.dev/doc/effective_go).
 - Core logic in `internal/` packages. Wails code in root package.
 
@@ -25,7 +29,7 @@ convert-vni-to-unicode/
   main.go              - Wails entry point
   app.go               - Wails app bindings
   internal/
-    converter/         - Domain-specific logic
+    converter/        - Domain-specific logic
   frontend/            - Wails frontend (HTML/CSS/JS)
   build/               - Build output
 ```
@@ -85,6 +89,5 @@ convert-vni-to-unicode/
 - [Effective Go](https://go.dev/doc/effective_go)
 - [Wails v2](https://github.com/wailsapp/wails)
 - [golangci-lint](https://github.com/golangci/golangci-lint)
-- [Excelize v2](https://github.com/xuri/excelize)
 
 > **Full Reference:** See `.agent/rules/go-idioms-reference.md` for detailed idioms, code examples, and best practices.

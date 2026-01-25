@@ -1,6 +1,6 @@
 module convert-vni-to-unicode
 
-go 1.24.0
+go 1.25.6
 
 require (
 	github.com/wailsapp/wails/v2 v2.11.0

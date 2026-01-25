@@ -65,7 +65,13 @@ func (a *App) CheckForUpdate() UpdateInfo {
 
 	// Call GitHub API
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", GitHubOwner, GitHubRepo)
-	resp, err := client.Get(url)
+	req, err := http.NewRequestWithContext(a.ctx, http.MethodGet, url, nil)
+	if err != nil {
+		runtime.LogErrorf(a.ctx, "Failed to create request: %v", err)
+		return info
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		runtime.LogErrorf(a.ctx, "Failed to check update: %v", err)
 		return info
@@ -163,7 +169,12 @@ func (a *App) PerformUpdate(downloadURL string) (bool, error) {
 	// Create HTTP client with timeout for download
 	client := &http.Client{Timeout: downloadTimeout}
 
-	resp, err := client.Get(downloadURL)
+	req, err := http.NewRequestWithContext(a.ctx, http.MethodGet, downloadURL, nil)
+	if err != nil {
+		return false, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return false, fmt.Errorf("failed to download: %w", err)
 	}
@@ -179,7 +190,7 @@ func (a *App) PerformUpdate(downloadURL string) (bool, error) {
 	// Limit download size to prevent memory exhaustion attacks
 	limitedReader := io.LimitReader(resp.Body, maxDownloadSize)
 
-	out, err := os.Create(tempFile)
+	out, err := os.Create(tempFile) //nolint:gosec // tempFile is constructed safely from os.TempDir
 	if err != nil {
 		return false, fmt.Errorf("failed to create temp file: %w", err)
 	}
@@ -210,7 +221,7 @@ del "%%~f0"
 		return false, fmt.Errorf("failed to create update script: %w", err)
 	}
 
-	cmd := exec.Command("cmd", "/c", "start", "/min", "", batchPath)
+	cmd := exec.Command("cmd", "/c", "start", "/min", "", batchPath) //nolint:gosec,noctx // safe detached proc
 	if err := cmd.Start(); err != nil {
 		return false, fmt.Errorf("failed to start update script: %w", err)
 	}

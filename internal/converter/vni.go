@@ -210,169 +210,161 @@ func (c *VNIConverter) ToUnicode(text string) string {
 
 // convertVNICombining handles VNI "combining marks" style encoding
 func convertVNICombining(text string) string {
-	// Pre-processing: Fix special VNI sequences
-	// ÖÔ -> ƯƠ (Fix for PHƯỜNG pattern)
-	text = strings.ReplaceAll(text, "ÖÔ", "ƯƠ")
-	text = strings.ReplaceAll(text, "ÖO", "ƯƠ")
-	text = strings.ReplaceAll(text, "Öø", "Ừ") // Ö + grave -> Ừ (sometimes)
-
+	text = preprocessVNI(text)
 	runes := []rune(text)
-	result := make([]rune, 0, len(runes)) // Pre-allocate with capacity hint
+	result := make([]rune, 0, len(runes))
 
-	i := 0
-	for i < len(runes) {
-		r := runes[i]
-
+	for _, r := range runes {
 		// Check if this rune is a VNI tone marker
 		if toneType, isTone := vniToneMarkers[r]; isTone {
 			// Try to combine with previous character
-			if len(result) > 0 {
-				lastIdx := len(result) - 1
-				lastChar := result[lastIdx]
-
-				// Case 1: Previous is a combined vowel (Ô, Ê, Â, etc.) - add tone to it
-				if tones, ok := combinedVowelTones[lastChar]; ok {
-					if combined, ok := tones[toneType]; ok {
-						result[lastIdx] = combined
-						i++
-						continue
-					}
-				}
-
-				// Case 2: Previous is a base vowel - combine with tone
-				if combos, ok := vowelCombinations[lastChar]; ok {
-					if combined, ok := combos[toneType]; ok {
-						result[lastIdx] = combined
-						i++
-						continue
-					}
-				}
-
-				// Case 3: Special handling for Ö/ö (Horn/ệ/Ư)
-				// If not combined with O/o, checks context.
-				if (r == 'Ö' || r == 'ö') && toneType == "horn" {
-					// Check context for Legacy ệ (after Vowel)
-					isPrevVowel := false
-					if len(result) > 0 {
-						lastChar := result[len(result)-1]
-						_, ok1 := vowelCombinations[lastChar]
-						_, ok2 := combinedVowelTones[lastChar]
-						isPrevVowel = ok1 || ok2
-					}
-
-					if isPrevVowel {
-						// Treat as ệ (Legacy)
-						result = append(result, 'ệ')
-					} else {
-						// Treat as Ư/ư (Visual Fix)
-						if r == 'Ö' {
-							result = append(result, 'Ư')
-						} else {
-							result = append(result, 'ư')
-						}
-					}
-					i++
-					continue
-				}
-			}
-
-			// Special handling for standalone circumflex markers that should combine
-			// with the vowel BEFORE them (VNI style: O + Â = Ô)
-			if r == 'Â' || r == 'â' {
-				if len(result) > 0 {
-					lastIdx := len(result) - 1
-					lastChar := result[lastIdx]
-					if combos, ok := vowelCombinations[lastChar]; ok {
-						if combined, ok := combos["circumflex"]; ok {
-							result[lastIdx] = combined
-							i++
-							continue
-						}
-					}
-				}
-			}
-
-			if r == 'Ø' || r == 'ø' {
-				if len(result) > 0 {
-					lastIdx := len(result) - 1
-					lastChar := result[lastIdx]
-					// Try adding grave to base vowel
-					if combos, ok := vowelCombinations[lastChar]; ok {
-						if combined, ok := combos["grave"]; ok {
-							result[lastIdx] = combined
-							i++
-							continue
-						}
-					}
-					// Try adding grave to combined vowel (Ô + Ø = Ồ)
-					if tones, ok := combinedVowelTones[lastChar]; ok {
-						if combined, ok := tones["grave"]; ok {
-							result[lastIdx] = combined
-							i++
-							continue
-						}
-					}
-				}
-			}
-
-			if r == 'Ï' || r == 'ï' {
-				if len(result) > 0 {
-					lastIdx := len(result) - 1
-					lastChar := result[lastIdx]
-					// Try adding dot to base vowel
-					if combos, ok := vowelCombinations[lastChar]; ok {
-						if combined, ok := combos["dot"]; ok {
-							result[lastIdx] = combined
-							i++
-							continue
-						}
-					}
-					// Try adding dot to combined vowel (Ô + Ï = Ộ)
-					if tones, ok := combinedVowelTones[lastChar]; ok {
-						if combined, ok := tones["dot"]; ok {
-							result[lastIdx] = combined
-							i++
-							continue
-						}
-					}
-				}
+			if updated, ok := tryCombineTone(result, r, toneType); ok {
+				result = updated
+				continue
 			}
 		}
 
-		// Handle Đ/đ (ñ/Ñ in VNI)
-		if r == 'Ñ' {
-			result = append(result, 'Đ')
-			i++
+		// Handle Đ/đ and Breve (Å/å)
+		if updated, ok := tryCombineOther(result, r); ok {
+			result = updated
 			continue
-		}
-		if r == 'ñ' {
-			result = append(result, 'đ')
-			i++
-			continue
-		}
-
-		// Check for breve marker (ă/Ă)
-		// In VNI, Å = breve marker
-		if r == 'Å' || r == 'å' {
-			if len(result) > 0 {
-				lastIdx := len(result) - 1
-				lastChar := result[lastIdx]
-				if lastChar == 'A' || lastChar == 'a' {
-					if unicode.IsUpper(lastChar) {
-						result[lastIdx] = 'Ă'
-					} else {
-						result[lastIdx] = 'ă'
-					}
-					i++
-					continue
-				}
-			}
 		}
 
 		// Default: keep the character
 		result = append(result, r)
-		i++
 	}
 
 	return string(result)
+}
+
+func preprocessVNI(text string) string {
+	text = strings.ReplaceAll(text, "ÖÔ", "ƯƠ")
+	text = strings.ReplaceAll(text, "ÖO", "ƯƠ")
+	text = strings.ReplaceAll(text, "Öø", "Ừ")
+	return text
+}
+
+func tryCombineTone(result []rune, r rune, toneType string) ([]rune, bool) {
+	if len(result) == 0 {
+		return result, false
+	}
+
+	lastIdx := len(result) - 1
+	lastChar := result[lastIdx]
+
+	// 1. Standard Tone Combination
+	if combined, ok := combineToneStandard(lastChar, toneType); ok {
+		result[lastIdx] = combined
+		return result, true
+	}
+
+	// 2. Special Markers Logic (Ö, Â, Ø, Ï)
+	if combined, ok := combineToneSpecial(result, r, toneType); ok {
+		return combined, true
+	}
+
+	return result, false
+}
+
+func combineToneStandard(lastChar rune, toneType string) (rune, bool) {
+	// Case 1: Combined vowel (Ô, Ê, Â...)
+	if tones, ok := combinedVowelTones[lastChar]; ok {
+		if combined, ok := tones[toneType]; ok {
+			return combined, true
+		}
+	}
+	// Case 2: Base vowel
+	if combos, ok := vowelCombinations[lastChar]; ok {
+		if combined, ok := combos[toneType]; ok {
+			return combined, true
+		}
+	}
+	return 0, false
+}
+
+func combineToneSpecial(result []rune, r rune, toneType string) ([]rune, bool) {
+	lastIdx := len(result) - 1
+	lastChar := result[lastIdx]
+
+	// Special handling for Ö/ö (Horn/ệ/Ư)
+	if (r == 'Ö' || r == 'ö') && toneType == "horn" {
+		// Check context for Legacy ệ (after Vowel)
+		isPrevVowel := checkPrevVowel(result)
+
+		if isPrevVowel {
+			// Treat as ệ (Legacy)
+			result = append(result, 'ệ')
+		} else {
+			// Treat as Ư/ư (Visual Fix)
+			if r == 'Ö' {
+				result = append(result, 'Ư')
+			} else {
+				result = append(result, 'ư')
+			}
+		}
+		return result, true
+	}
+
+	// Standalone Circumflex (Â/â) combining backwards (O + Â = Ô)
+	if r == 'Â' || r == 'â' {
+		if combos, ok := vowelCombinations[lastChar]; ok {
+			if combined, ok := combos["circumflex"]; ok {
+				result[lastIdx] = combined
+				return result, true
+			}
+		}
+	}
+
+	// Standalone Grave (Ø/ø)
+	if r == 'Ø' || r == 'ø' {
+		if combined, ok := combineToneStandard(lastChar, "grave"); ok {
+			result[lastIdx] = combined
+			return result, true
+		}
+	}
+
+	// Standalone Dot (Ï/ï)
+	if r == 'Ï' || r == 'ï' {
+		if combined, ok := combineToneStandard(lastChar, "dot"); ok {
+			result[lastIdx] = combined
+			return result, true
+		}
+	}
+
+	return result, false
+}
+
+func checkPrevVowel(result []rune) bool {
+	if len(result) == 0 {
+		return false
+	}
+	lastChar := result[len(result)-1]
+	_, ok1 := vowelCombinations[lastChar]
+	_, ok2 := combinedVowelTones[lastChar]
+	return ok1 || ok2
+}
+
+func tryCombineOther(result []rune, r rune) ([]rune, bool) {
+	// Handle Đ/đ
+	if r == 'Ñ' {
+		return append(result, 'Đ'), true
+	}
+	if r == 'ñ' {
+		return append(result, 'đ'), true
+	}
+
+	// Handle Breve (Å/å)
+	if (r == 'Å' || r == 'å') && len(result) > 0 {
+		lastIdx := len(result) - 1
+		lastChar := result[lastIdx]
+		if lastChar == 'A' || lastChar == 'a' {
+			if unicode.IsUpper(lastChar) {
+				result[lastIdx] = 'Ă'
+			} else {
+				result[lastIdx] = 'ă'
+			}
+			return result, true
+		}
+	}
+	return result, false
 }

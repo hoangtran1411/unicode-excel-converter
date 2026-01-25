@@ -37,7 +37,7 @@ func TestProcessor_Run(t *testing.T) {
 	// Run 1: "Hello " (Arial)
 	// Run 2: "Vi\u00D6t" (VNI-Times, Bold)
 	textRuns := []excelize.RichTextRun{
-		{Text: "Hello ", Font: &excelize.Font{Family: "Arial"}},
+		{Text: "Hello ", Font: &excelize.Font{Family: DefaultFont}},
 		{Text: "Vi\u00D6t", Font: &excelize.Font{Family: "VNI-Times", Bold: true}},
 	}
 	if err := f.SetCellRichText(sheet, "A2", textRuns); err != nil {
@@ -107,7 +107,7 @@ func TestProcessor_Run(t *testing.T) {
 			t.Errorf("A1 Font is nil")
 		} else {
 			font := runs[0].Font.Family
-			if font != "Times New Roman" && font != "Arial" { // Mapped
+			if font != "Times New Roman" && font != DefaultFont { // Mapped
 				t.Errorf("A1 font mismatch. Got %s, want Times New Roman", font)
 			}
 		}

@@ -72,14 +72,14 @@ func NewTCVN3Converter() *TCVN3Converter {
 			"\u00F5", "ọ",
 			"\u00F6", "ô", // ö
 
-			// Uppercase vowels in TCVN3 are often mapped to specific other chars or handled by .VnTimeH font (which maps standard ASCII A-Z to localized A-Z).
+			// Uppercase vowels in TCVN3 are often mapped to specific other chars or handled by
+			// .VnTimeH font (which maps standard ASCII A-Z to localized A-Z).
 			// However, mixed chars like 'ố' exist.
-
 			// TCVN3 Uppercase is typically dependent on using the UPPERCASE FONT (.VnTimeH).
 			// If the user uses .VnTimeH, then typing 'A' produces 'A', 'B' produces 'B'.
 			// But 'á' (input) -> '¸' -> displays 'Á' in .VnTimeH.
 			// So, if the font is .VnTimeH, we should convert '¸' to 'Á'.
-			// For now, let's strictly handle the lowercase logic which is universaly mapped in the standard font.
+			// For now, let's strictly handle the lowercase logic which is universally mapped in the standard font.
 
 			// d
 			"\u00AE", "đ", // ®
@@ -87,6 +87,7 @@ func NewTCVN3Converter() *TCVN3Converter {
 	}
 }
 
+// ToUnicode converts TCVN3 encoded text to Unicode.
 func (c *TCVN3Converter) ToUnicode(text string) string {
 	return c.replacer.Replace(text)
 }
