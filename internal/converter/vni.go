@@ -217,7 +217,7 @@ func convertVNICombining(text string) string {
 	text = strings.ReplaceAll(text, "Öø", "Ừ") // Ö + grave -> Ừ (sometimes)
 
 	runes := []rune(text)
-	var result []rune
+	result := make([]rune, 0, len(runes)) // Pre-allocate with capacity hint
 
 	i := 0
 	for i < len(runes) {

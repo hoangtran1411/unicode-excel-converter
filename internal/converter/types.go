@@ -8,7 +8,7 @@ const (
 	EncodingVNI    EncodingType = "VNI"
 	EncodingTCVN3  EncodingType = "TCVN3"
 	EncodingAuto   EncodingType = "AUTO"
-	EncodingUnkown EncodingType = "UNKNOWN"
+	EncodingUnknown EncodingType = "UNKNOWN"
 )
 
 // Converter is the interface that all specific encoding converters must implement.

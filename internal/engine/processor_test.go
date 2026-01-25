@@ -59,7 +59,9 @@ func TestProcessor_Run(t *testing.T) {
 	if err := f.SaveAs(inputFile); err != nil {
 		t.Fatalf("failed to create input file: %v", err)
 	}
-	f.Close()
+	if err := f.Close(); err != nil {
+		t.Fatalf("failed to close input file: %v", err)
+	}
 
 	// 2. Run Processor
 	proc := NewProcessor(inputFile, "")
@@ -78,7 +80,11 @@ func TestProcessor_Run(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open output: %v", err)
 	}
-	defer fOut.Close()
+	defer func() {
+		if err := fOut.Close(); err != nil {
+			t.Errorf("failed to close output file: %v", err)
+		}
+	}()
 
 	// Verify A1 (Plain Converted)
 	// Output should be RichText as we unified logic? Or just text?

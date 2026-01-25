@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"convert-vni-to-unicode/internal/engine"
+	"os/exec"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -82,13 +83,13 @@ func (a *App) Process(cfg Config) ProcessResult {
 	}
 }
 
-// ShowInFolder opens the file explorer
+// ShowInFolder opens the file explorer and selects the file.
+// Why: Native Windows integration for better UX.
 func (a *App) ShowInFolder(path string) {
 	if path == "" {
 		return
 	}
-	// Wails doesn't have a direct "Show in Folder", but we can use "exec" or just rely on user.
-	// Actually, just opening the file or parent dir is enough.
-	// For simplicity, we skip this or implement platform-specific command if requested.
-	// Users usually just know where it is (next to original).
+	// Use Windows-native "explorer /select" to open folder and highlight file
+	cmd := exec.Command("explorer", "/select,", path)
+	_ = cmd.Start() // Fire and forget, error is non-critical
 }

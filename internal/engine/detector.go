@@ -32,5 +32,5 @@ func DetectEncoding(fontName string, text string) converter.EncodingType {
 		return converter.EncodingTCVN3
 	}
 
-	return converter.EncodingUnkown
+	return converter.EncodingUnknown
 }

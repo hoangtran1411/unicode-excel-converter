@@ -10,7 +10,11 @@ import (
 
 func main() {
 	f := excelize.NewFile()
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Printf("warning: failed to close file: %v", err)
+		}
+	}()
 
 	sheet := "Sheet1"
 	if _, err := f.NewSheet(sheet); err != nil {
