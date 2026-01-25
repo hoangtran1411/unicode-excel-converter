@@ -283,19 +283,25 @@ func combineToneStandard(lastChar rune, toneType string) (rune, bool) {
 }
 
 func combineToneSpecial(result []rune, r rune, toneType string) ([]rune, bool) {
-	lastIdx := len(result) - 1
-	lastChar := result[lastIdx]
-
 	// Special handling for Ö/ö (Horn/ệ/Ư)
-	if (r == 'Ö' || r == 'ö') && toneType == "horn" {
-		// Check context for Legacy ệ (after Vowel)
-		isPrevVowel := checkPrevVowel(result)
+	if updated, ok := combineVNIHorn(result, r, toneType); ok {
+		return updated, true
+	}
 
+	// Standalone markers (Â, Ø, Ï)
+	if updated, ok := combineVNIStandalone(result, r); ok {
+		return updated, true
+	}
+
+	return result, false
+}
+
+func combineVNIHorn(result []rune, r rune, toneType string) ([]rune, bool) {
+	if (r == 'Ö' || r == 'ö') && toneType == "horn" {
+		isPrevVowel := checkPrevVowel(result)
 		if isPrevVowel {
-			// Treat as ệ (Legacy)
 			result = append(result, 'ệ')
 		} else {
-			// Treat as Ư/ư (Visual Fix)
 			if r == 'Ö' {
 				result = append(result, 'Ư')
 			} else {
@@ -304,8 +310,14 @@ func combineToneSpecial(result []rune, r rune, toneType string) ([]rune, bool) {
 		}
 		return result, true
 	}
+	return result, false
+}
 
-	// Standalone Circumflex (Â/â) combining backwards (O + Â = Ô)
+func combineVNIStandalone(result []rune, r rune) ([]rune, bool) {
+	lastIdx := len(result) - 1
+	lastChar := result[lastIdx]
+
+	// Standalone Circumflex (Â/â)
 	if r == 'Â' || r == 'â' {
 		if combos, ok := vowelCombinations[lastChar]; ok {
 			if combined, ok := combos["circumflex"]; ok {
@@ -330,7 +342,6 @@ func combineToneSpecial(result []rune, r rune, toneType string) ([]rune, bool) {
 			return result, true
 		}
 	}
-
 	return result, false
 }
 

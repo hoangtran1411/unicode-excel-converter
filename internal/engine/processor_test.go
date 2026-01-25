@@ -72,13 +72,13 @@ func TestProcessor_Run(t *testing.T) {
 	}
 
 	// 3. Verify Output
-	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
+	if _, statErr := os.Stat(outputFile); os.IsNotExist(statErr) {
 		t.Fatalf("output file not created: %s", outputFile)
 	}
 
-	fOut, err := excelize.OpenFile(outputFile)
-	if err != nil {
-		t.Fatalf("failed to open output: %v", err)
+	fOut, openErr := excelize.OpenFile(outputFile)
+	if openErr != nil {
+		t.Fatalf("failed to open output: %v", openErr)
 	}
 	defer func() {
 		if err := fOut.Close(); err != nil {
@@ -101,8 +101,8 @@ func TestProcessor_Run(t *testing.T) {
 
 	// Check Font A1 (via RichText or Style?)
 	// If specific RichText was set, style is usually overridden or ignored by Excel in some views, but better check runs.
-	runs, err := fOut.GetCellRichText(sheet, "A1")
-	if err == nil && len(runs) > 0 {
+	runs, rtErr := fOut.GetCellRichText(sheet, "A1")
+	if rtErr == nil && len(runs) > 0 {
 		if runs[0].Font == nil {
 			t.Errorf("A1 Font is nil")
 		} else {

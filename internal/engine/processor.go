@@ -115,84 +115,8 @@ func (p *Processor) Run(ctx context.Context) (string, error) {
 		go p.worker(&wg)
 	}
 
-	// Dispatcher - runs in a separate goroutine, owns read access to p.f
-	go func() {
-		defer close(p.jobs)
-		for _, sheet := range sheets {
-			rows, err := p.f.Rows(sheet)
-			if err != nil {
-				slog.Error("failed to get rows", "sheet", sheet, "error", err)
-				continue
-			}
-
-			rowIdx := 0
-			for rows.Next() {
-				rowIdx++
-				cols, err := rows.Columns()
-				if err != nil {
-					slog.Error("failed to get columns", "sheet", sheet, "row", rowIdx, "error", err)
-					continue
-				}
-				for colIdx, text := range cols {
-					// Check for cancellation
-					select {
-					case <-ctx.Done():
-						return
-					default:
-					}
-
-					axis, err := excelize.CoordinatesToCellName(colIdx+1, rowIdx)
-					if err != nil {
-						slog.Error("failed to convert coordinates", "row", rowIdx, "col", colIdx+1, "error", err)
-						continue
-					}
-
-					if strings.TrimSpace(text) == "" {
-						continue
-					}
-
-					// Strategy: Unify everything to RichText for consistent processing.
-					// 1. Try to get existing RichText
-					runs, err := p.f.GetCellRichText(sheet, axis)
-					isRich := false
-					if err == nil && len(runs) > 0 {
-						isRich = true
-					}
-
-					// 2. If no RichText, create synthetic RichText from Plain Text + Style Font
-					if !isRich {
-						fontName := ""
-						styleID, err := p.f.GetCellStyle(sheet, axis)
-						if err == nil {
-							style, err := p.f.GetStyle(styleID)
-							if err == nil && style.Font != nil {
-								fontName = style.Font.Family
-								slog.Debug("cell font detected", "cell", axis, "font", fontName)
-							}
-						}
-						// Create synthetic run with capacity hint
-						runs = make([]excelize.RichTextRun, 0, 1)
-						runs = append(runs, excelize.RichTextRun{
-							Text: text,
-							Font: &excelize.Font{Family: fontName, Size: 11},
-						})
-					}
-
-					// Send Job
-					p.jobs <- Job{
-						SheetName: sheet,
-						Axis:      axis,
-						Text:      text,
-						RichText:  runs,
-						IsRich:    isRich,
-					}
-				}
-			}
-			if err := rows.Close(); err != nil {
-				slog.Error("failed to close rows iterator", "sheet", sheet, "error", err)
-			}
-		}
-	}()
+	// Dispatcher - runs in a separate goroutine
+	go p.processSheets(ctx, sheets)
 
 	// Collector (Writer) - waits for workers to finish, then closes results
 	go func() {
@@ -232,6 +156,89 @@ func (p *Processor) Run(ctx context.Context) (string, error) {
 	return outputPath, nil
 }
 
+// processSheets iterates through sheets to dispatch jobs
+func (p *Processor) processSheets(ctx context.Context, sheets []string) {
+	defer close(p.jobs)
+	for _, sheet := range sheets {
+		p.processSheet(ctx, sheet)
+	}
+}
+
+func (p *Processor) processSheet(ctx context.Context, sheet string) {
+	rows, err := p.f.Rows(sheet)
+	if err != nil {
+		slog.Error("failed to get rows", "sheet", sheet, "error", err)
+		return
+	}
+
+	rowIdx := 0
+	for rows.Next() {
+		rowIdx++
+		cols, err := rows.Columns()
+		if err != nil {
+			slog.Error("failed to get columns", "sheet", sheet, "row", rowIdx, "error", err)
+			continue
+		}
+		for colIdx, text := range cols {
+			// Check for cancellation
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
+			axis, err := excelize.CoordinatesToCellName(colIdx+1, rowIdx)
+			if err != nil {
+				slog.Error("failed to convert coordinates", "row", rowIdx, "col", colIdx+1, "error", err)
+				continue
+			}
+
+			if strings.TrimSpace(text) == "" {
+				continue
+			}
+
+			// Strategy: Unify everything to RichText for consistent processing.
+			// 1. Try to get existing RichText
+			runs, err := p.f.GetCellRichText(sheet, axis)
+			isRich := false
+			if err == nil && len(runs) > 0 {
+				isRich = true
+			}
+
+			// 2. If no RichText, create synthetic RichText from Plain Text + Style Font
+			if !isRich {
+				fontName := ""
+				styleID, err := p.f.GetCellStyle(sheet, axis)
+				if err == nil {
+					style, err := p.f.GetStyle(styleID)
+					if err == nil && style.Font != nil {
+						fontName = style.Font.Family
+						slog.Debug("cell font detected", "cell", axis, "font", fontName)
+					}
+				}
+				// Create synthetic run with capacity hint
+				runs = make([]excelize.RichTextRun, 0, 1)
+				runs = append(runs, excelize.RichTextRun{
+					Text: text,
+					Font: &excelize.Font{Family: fontName, Size: 11},
+				})
+			}
+
+			// Send Job
+			p.jobs <- Job{
+				SheetName: sheet,
+				Axis:      axis,
+				Text:      text,
+				RichText:  runs,
+				IsRich:    isRich,
+			}
+		}
+	}
+	if err := rows.Close(); err != nil {
+		slog.Error("failed to close rows iterator", "sheet", sheet, "error", err)
+	}
+}
+
 func (p *Processor) worker(wg *sync.WaitGroup) {
 	defer wg.Done()
 	for job := range p.jobs {
@@ -266,7 +273,7 @@ func (p *Processor) worker(wg *sync.WaitGroup) {
 						if run.Font == nil {
 							run.Font = &excelize.Font{}
 						}
-						run.Font.Family = "Arial"
+						run.Font.Family = DefaultFont
 					}
 				case converter.EncodingTCVN3:
 					text = p.tcvn3Preserver.converter.ToUnicode(run.Text)
@@ -279,7 +286,7 @@ func (p *Processor) worker(wg *sync.WaitGroup) {
 						if run.Font == nil {
 							run.Font = &excelize.Font{}
 						}
-						run.Font.Family = "Arial"
+						run.Font.Family = DefaultFont
 					}
 				default:
 					text = run.Text // No change for unknown encoding
