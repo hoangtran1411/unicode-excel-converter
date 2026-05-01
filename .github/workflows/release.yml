@@ -47,7 +47,7 @@ jobs:
 
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           files: build/bin/VniConverter.exe
           name: Release ${{ steps.get_version.outputs.VERSION }}
